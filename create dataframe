@@ -1,0 +1,29 @@
+import pandas as pd
+
+uld = pd.read_csv("./ULD.csv", encoding="utf16")
+
+m_uld = uld.loc[uld['ULD_Info_ULD_Is_Breakdown'] == "Y"]
+
+uld_key=pd.DataFrame(m_uld['ULD_ID_ULD_Key'])
+uld_key[['identifier', 'flight', 'arr_time']] = uld_key['ULD_ID_ULD_Key'].str.split(' ', 2, expand=True)
+uld_key['flight_nr']=uld_key['flight'].str.slice(stop=8) ##is vluchtnummer altijd 8 characters?
+uld_key['arr_date']=uld_key['flight'].str.slice(start=8)
+uld_key['flight_nr']=uld_key['flight'].str.slice(stop=8)
+uld_key['arr_date']=uld_key['flight'].str.slice(start=8)
+uld_key['arr_year']=uld_key['arr_date'].str.slice(stop=4)
+uld_key['arr_date']=uld_key['arr_date'].str.slice(start=4)
+uld_key['arr_month']=uld_key['arr_date'].str.slice(stop=2)
+uld_key['arr_day']=uld_key['arr_date'].str.slice(start=2)
+
+
+uld_frame = uld_key[['identifier', 'flight_nr', 'arr_date' , 'arr_time']]
+uld_frame[['est_bd_minutes']] = m_uld[['ULD_Info_Work_Minutes']].astype(int)
+
+uld_bd = pd.DataFrame(m_uld['ULD_Timestamp_Breakdown_Actual_End_Date_Time'])
+uld_bd[['bd_date', 'bd_time']]=uld_bd['ULD_Timestamp_Breakdown_Actual_End_Date_Time'].str.split(' ', 1, expand=True)
+uld_bd[['bd_day', 'bd_month', 'bd_year']]=uld_bd['bd_date'].str.split('/', 2, expand=True)
+
+uld_frame[['bd_day', 'bd_month', 'bd_year', 'bd_time']]=uld_bd[['bd_day', 'bd_month', 'bd_year', 'bd_time']]
+
+
+

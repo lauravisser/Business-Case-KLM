@@ -1,4 +1,0 @@
-import pd
-
-
-data = pd.read_csv
