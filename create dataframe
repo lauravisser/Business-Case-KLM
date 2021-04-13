@@ -21,7 +21,7 @@ uld_frame[['est_bd_minutes']] = m_uld[['ULD_Info_Work_Minutes']].astype(int)
 
 uld_bd = pd.DataFrame(m_uld['ULD_Timestamp_Breakdown_Actual_End_Date_Time'])
 uld_bd['bd_datetime']=pd.to_datetime(uld_bd['ULD_Timestamp_Breakdown_Actual_End_Date_Time'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
-
+uld_frame[['bd_datetime']]=uld_bd[['bd_datetime']]
 
 
 
