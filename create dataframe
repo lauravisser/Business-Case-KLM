@@ -6,16 +6,18 @@ uld = pd.read_csv("./01. ULD.csv", encoding="utf16")
 
 m_uld = uld.loc[uld['ULD_Info_ULD_Is_Breakdown'] == "Y"]
 
+uld_frame = pd.DataFrame(m_uld['ULD_ID_ULD_Key'])
 uld_key=pd.DataFrame(m_uld['ULD_ID_ULD_Key'].str.replace('/', ' '))
 
-uld_key[['identifier', 'flight', 'arr_time']] = uld_key['ULD_ID_ULD_Key'].str.rsplit(n=2, expand=True)
+uld_key[['identifier', 'flight', 'sc_arr_time']] = uld_key['ULD_ID_ULD_Key'].str.rsplit(n=2, expand=True)
 
 uld_key['flight_nr']=uld_key['flight'].str.slice(stop=8)
-uld_key['arr_date']=uld_key['flight'].str.slice(start=8)
-uld_key['arr_date_and_time']= uld_key['arr_date']+ uld_key['arr_time']
-uld_key['arr_datetime']=pd.to_datetime(uld_key['arr_date_and_time'], format='%Y%m%d%H:%M:%S', errors='ignore')
+uld_key['sc_arr_date']=uld_key['flight'].str.slice(start=8)
+uld_key['sc_arr_date_and_time']= uld_key['sc_arr_date']+ uld_key['sc_arr_time']
+uld_key['sc_arr_datetime']=pd.to_datetime(uld_key['sc_arr_date_and_time'], format='%Y%m%d%H:%M:%S', errors='ignore')
+uld_key['cur_arr_datetime']=pd.to_datetime(m_uld['FLIGHT_Timestamp_Current_Arrival_Date_Time'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
 
-uld_frame = uld_key[['identifier', 'flight_nr', 'arr_datetime']]
+uld_frame = pd.concat([uld_frame,uld_key[['identifier', 'flight_nr', 'sc_arr_datetime', 'cur_arr_datetime']]], 1)
 
 uld_frame[['est_bd_minutes']] = m_uld[['ULD_Info_Work_Minutes']].astype(int)
 
@@ -25,4 +27,16 @@ uld_frame[['bd_datetime']]=uld_bd[['bd_datetime']]
 
 
 
+doorschuiven = pd.read_csv("./02. ULD - Doorgeschoven.csv", encoding="utf16")
+m_uld_ds = doorschuiven.loc[doorschuiven['ULD_Info_Doorgeschoven_Indicator'] != '99. No Breakdown ULD']
+uld_frame=pd.merge(uld_frame, m_uld_ds, on='ULD_ID_ULD_Key')
 
+
+awb = pd.read_csv("./03. AWB.csv", encoding="utf16")
+awb['ULD_ID_ULD_Key']=awb['ULD_ID_ULD_Key_IN']
+uld_frame = pd.merge(uld_frame, awb[['ULD_ID_ULD_Key', 'AWB_Info_Cargo_Flow', 'AWB_ID_AWB_Number', 'AWB_Timestamp_Deadline_Breakdown_End']], how="right", on= 'ULD_ID_ULD_Key')
+
+
+awb_commercial = pd.read_csv('04. AWB - Commercial indicators (Transit AWBs only!).csv', encoding="utf16")
+uld_frame = pd.merge(uld_frame, awb_commercial[['AWB_ID_AWB_Number', 'CommercialPriority']], how="left", on= 'AWB_ID_AWB_Number')
+uld_frame.head()
