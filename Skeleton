@@ -1,0 +1,81 @@
+#Classes
+Class Package()
+  init()
+  boolean Import/Transit
+  int Commercial priority
+  datetime Deadline
+  
+Class M_uld()
+   Package array
+   Arrival time
+   Deadline (=eerste deadline van packages)
+   int Estimated breakdown time
+   
+   add_package_to_uld(package) #bij het inlezen
+   
+   number_of_package_overtime(datetime)
+    return number of package of which deadline is before datetime
+
+
+ 
+#Global variables 
+
+teams_available_array[]
+float current_teams_working
+int total_impact
+
+
+
+#main
+
+doorschuiven(uld)
+    total_impact + impact_uld 
+    make_schedule met uld later
+
+
+impact_calculator()
+  calculate impact of uld doorschuiven
+
+determine_lowest_impact(doorschuif_candidates)
+  for packages that can be doorgeschoven 
+  
+determine_doorschuif_candidates()
+  determine the potential packages that can solve the schedule problem with doorschuiven 
+  
+check_if_team_is_available(time)
+    current_teams_working< teams_available_array([time])
+    
+plan_unpacking(uld)
+  current_teams_working +1 for uld_est_time
+  after bd time current_teams_working -1
+
+make_schedule()
+  plan unpacking until it doesnt fit
+  if does not fit, determine_doorschuif_candidates  
+
+read_data_file()
+  m_ulds aanmaken
+
+
+main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+main()
