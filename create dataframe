@@ -32,6 +32,7 @@ m_uld_ds = doorschuiven.loc[doorschuiven['ULD_Info_Doorgeschoven_Indicator'] != 
 uld_frame=pd.merge(uld_frame, m_uld_ds, on='ULD_ID_ULD_Key')
 
 
+
 awb = pd.read_csv("./03. AWB.csv", encoding="utf16")
 awb['ULD_ID_ULD_Key']=awb['ULD_ID_ULD_Key_IN']
 uld_frame = pd.merge(uld_frame, awb[['ULD_ID_ULD_Key', 'AWB_Info_Cargo_Flow', 'AWB_ID_AWB_Number', 'AWB_Timestamp_Deadline_Breakdown_End']], how="right", on= 'ULD_ID_ULD_Key')
@@ -40,3 +41,14 @@ uld_frame = pd.merge(uld_frame, awb[['ULD_ID_ULD_Key', 'AWB_Info_Cargo_Flow', 'A
 awb_commercial = pd.read_csv('04. AWB - Commercial indicators (Transit AWBs only!).csv', encoding="utf16")
 uld_frame = pd.merge(uld_frame, awb_commercial[['AWB_ID_AWB_Number', 'CommercialPriority']], how="left", on= 'AWB_ID_AWB_Number')
 uld_frame.head()
+
+###for datavisualization percentage doorgeschoven
+print(uld_frame['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
+uld_transit = uld_frame.loc[uld_frame['AWB_Info_Cargo_Flow'] == 'TRANSIT']
+print("transit", uld_transit['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
+uld_import = uld_frame.loc[uld_frame['AWB_Info_Cargo_Flow'] != 'TRANSIT']
+print("import", uld_import['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
+print(len(uld_transit), len(uld_import), len(uld_frame))
+
+
+
