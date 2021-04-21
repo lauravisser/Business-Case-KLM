@@ -32,9 +32,14 @@ doorschuiven(uld)
     total_impact + impact_uld 
     make_schedule met uld later
 
+impact_calculator_import()
+  calculate impact if package is import
 
-impact_calculator()
-  calculate impact of uld doorschuiven
+impact_calculator_transit()
+  calculate impact if package is transit
+
+impact_calculator_uld
+  per package calculate impact of uld doorschuiven
 
 determine_lowest_impact(doorschuif_candidates)
   for packages that can be doorgeschoven 
