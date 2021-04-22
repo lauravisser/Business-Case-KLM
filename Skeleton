@@ -54,6 +54,10 @@ check_if_team_is_available(time)
 plan_unpacking(uld)
   current_teams_working +1 for uld_est_time
   after bd time current_teams_working -1
+  Je weet niet wat er aan komt, knop wordt ingedrukt en je weet niet wat er aankomt.
+  Bepalen waar je hem heen schuift. Verwachtte werkaanbod.
+  Historische patronen. Gewoon bouwen en later perfectioneren.
+  Timestamp inbouwen voor als er op de rode knop wordt gedrukt, ene grote of twee kleine. <-- Commercial priority.
 
 make_schedule()
   plan unpacking until it doesnt fit
