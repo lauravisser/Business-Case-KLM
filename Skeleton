@@ -1,12 +1,13 @@
 #Classes
-Class Package()
+Class Shipment()
   init()
   boolean Import/Transit
   int Commercial priority
-  datetime Deadline
+  datetime Deadline --> operationele KPI
+  Productcode --> Impact
   
 Class M_uld()
-   Package array
+   Shipment array
    Arrival time
    Deadline (=eerste deadline van packages)
    int Estimated breakdown time
@@ -25,7 +26,7 @@ float current_teams_working
 int total_impact
 
 
-
+Object diagram maken
 #main
 
 doorschuiven(uld)
