@@ -4,10 +4,8 @@ from datetime import timedelta
 
 uld = pd.read_csv("./01. ULD.csv", encoding="utf16")
 
-m_uld = uld.loc[uld['ULD_Info_ULD_Is_Breakdown'] == "Y"]
-
-uld_frame = pd.DataFrame(m_uld['ULD_ID_ULD_Key'])
-uld_key=pd.DataFrame(m_uld['ULD_ID_ULD_Key'].str.replace('/', ' '))
+uld_frame = pd.DataFrame(uld['ULD_ID_ULD_Key'])
+uld_key=pd.DataFrame(uld['ULD_ID_ULD_Key'].str.replace('/', ' '))
 
 uld_key[['identifier', 'flight', 'sc_arr_time']] = uld_key['ULD_ID_ULD_Key'].str.rsplit(n=2, expand=True)
 
@@ -25,13 +23,8 @@ uld_bd = pd.DataFrame(m_uld['ULD_Timestamp_Breakdown_Actual_End_Date_Time'])
 uld_bd['bd_datetime']=pd.to_datetime(uld_bd['ULD_Timestamp_Breakdown_Actual_End_Date_Time'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
 uld_frame[['bd_datetime']]=uld_bd[['bd_datetime']]
 
-
-
 doorschuiven = pd.read_csv("./02. ULD - Doorgeschoven.csv", encoding="utf16")
-m_uld_ds = doorschuiven.loc[doorschuiven['ULD_Info_Doorgeschoven_Indicator'] != '99. No Breakdown ULD']
-uld_frame=pd.merge(uld_frame, m_uld_ds, on='ULD_ID_ULD_Key')
-
-
+uld_frame=pd.merge(uld_frame, doorschuiven, on='ULD_ID_ULD_Key')
 
 awb = pd.read_csv("./03. AWB.csv", encoding="utf16")
 awb['ULD_ID_ULD_Key']=awb['ULD_ID_ULD_Key_IN']
@@ -40,6 +33,10 @@ uld_frame = pd.merge(uld_frame, awb[['ULD_ID_ULD_Key', 'AWB_Info_Cargo_Flow', 'A
 
 awb_commercial = pd.read_csv('04. AWB - Commercial indicators (Transit AWBs only!).csv', encoding="utf16")
 uld_frame = pd.merge(uld_frame, awb_commercial[['AWB_ID_AWB_Number', 'CommercialPriority']], how="left", on= 'AWB_ID_AWB_Number')
+
+
+###AWB also non breakdown ulds so filtering is last step
+uld_frame = uld_frame.loc[awb_frame['ULD_Info_Doorgeschoven_Indicator'] != '99. No Breakdown ULD']
 uld_frame.head()
 
 ###for datavisualization percentage doorgeschoven
@@ -50,5 +47,9 @@ uld_import = uld_frame.loc[uld_frame['AWB_Info_Cargo_Flow'] != 'TRANSIT']
 print("import", uld_import['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
 print(len(uld_transit), len(uld_import), len(uld_frame))
 
+
+###Make excel of first 1000 rows
+excel_frame = awb_frame[0:1000]
+excel_frame.to_excel("dataframe5.xlsx")
 
 
