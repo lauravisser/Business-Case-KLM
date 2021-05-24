@@ -4,6 +4,8 @@ from datetime import timedelta
 
 uld = pd.read_csv("./01. ULD.csv", encoding="utf16")
 
+#m_uld = uld.loc[uld['ULD_Info_ULD_Is_Breakdown'] == "Y"]
+
 uld_frame = pd.DataFrame(uld['ULD_ID_ULD_Key'])
 uld_key=pd.DataFrame(uld['ULD_ID_ULD_Key'].str.replace('/', ' '))
 
@@ -13,15 +15,16 @@ uld_key['flight_nr']=uld_key['flight'].str.slice(stop=8)
 uld_key['sc_arr_date']=uld_key['flight'].str.slice(start=8)
 uld_key['sc_arr_date_and_time']= uld_key['sc_arr_date']+ uld_key['sc_arr_time']
 uld_key['sc_arr_datetime']=pd.to_datetime(uld_key['sc_arr_date_and_time'], format='%Y%m%d%H:%M:%S', errors='ignore')
-uld_key['cur_arr_datetime']=pd.to_datetime(m_uld['FLIGHT_Timestamp_Current_Arrival_Date_Time'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
+uld_key['cur_arr_datetime']=pd.to_datetime(uld['FLIGHT_Timestamp_Current_Arrival_Date_Time'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
 
-uld_frame = pd.concat([uld_frame,uld_key[['identifier', 'flight_nr', 'sc_arr_datetime', 'cur_arr_datetime']]], 1)
+uld_frame = pd.concat([uld_frame, uld_key[['identifier', 'flight_nr', 'sc_arr_datetime', 'cur_arr_datetime']]], 1)
 
-uld_frame[['est_bd_minutes']] = m_uld[['ULD_Info_Work_Minutes']].astype(int)
+uld_frame[['est_bd_minutes']] = uld[['ULD_Info_Work_Minutes']]
 
-uld_bd = pd.DataFrame(m_uld['ULD_Timestamp_Breakdown_Actual_End_Date_Time'])
+uld_bd = pd.DataFrame(uld['ULD_Timestamp_Breakdown_Actual_End_Date_Time'])
 uld_bd['bd_datetime']=pd.to_datetime(uld_bd['ULD_Timestamp_Breakdown_Actual_End_Date_Time'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
 uld_frame[['bd_datetime']]=uld_bd[['bd_datetime']]
+
 
 doorschuiven = pd.read_csv("./02. ULD - Doorgeschoven.csv", encoding="utf16")
 uld_frame=pd.merge(uld_frame, doorschuiven, on='ULD_ID_ULD_Key')
