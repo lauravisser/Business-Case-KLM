@@ -25,17 +25,28 @@ uld_bd = pd.DataFrame(uld['ULD_Timestamp_Breakdown_Actual_End_Date_Time'])
 uld_bd['bd_datetime']=pd.to_datetime(uld_bd['ULD_Timestamp_Breakdown_Actual_End_Date_Time'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
 uld_frame[['bd_datetime']]=uld_bd[['bd_datetime']]
 
-
 doorschuiven = pd.read_csv("./02. ULD - Doorgeschoven.csv", encoding="utf16")
 uld_frame=pd.merge(uld_frame, doorschuiven, on='ULD_ID_ULD_Key')
 
 awb = pd.read_csv("./03. AWB.csv", encoding="utf16")
+awb.head()
 awb['ULD_ID_ULD_Key']=awb['ULD_ID_ULD_Key_IN']
-uld_frame = pd.merge(uld_frame, awb[['ULD_ID_ULD_Key', 'AWB_Info_Cargo_Flow', 'AWB_ID_AWB_Number', 'AWB_Timestamp_Deadline_Breakdown_End']], how="right", on= 'ULD_ID_ULD_Key')
+awb['AWB_Timestamp_Deadline_Breakdown_End'] = pd.to_datetime(awb['AWB_Timestamp_Deadline_Breakdown_End'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
+
+deadline_frame = pd.DataFrame(awb['ULD_ID_ULD_Key'])
+deadline_frame['uld_deadline'] = awb['AWB_Timestamp_Deadline_Breakdown_End']
+deadline_frame['first_awb'] = awb['AWB_ID_AWB_Number']
+
+new_frame = pd.merge(uld_frame, deadline_frame[['ULD_ID_ULD_Key', 'first_awb', 'uld_deadline']],  how="outer", on = 'ULD_ID_ULD_Key')
+new_frame = new_frame.sort_values(by=['uld_deadline'])
+new_frame = new_frame.drop_duplicates(subset=['ULD_ID_ULD_Key'])
+awb_frame = pd.merge(new_frame, awb[['ULD_ID_ULD_Key', 'AWB_Info_Cargo_Flow', 'AWB_ID_AWB_Number', 'AWB_Timestamp_Deadline_Breakdown_End']], how="right", on= 'ULD_ID_ULD_Key')
+
 
 
 awb_commercial = pd.read_csv('04. AWB - Commercial indicators (Transit AWBs only!).csv', encoding="utf16")
-uld_frame = pd.merge(uld_frame, awb_commercial[['AWB_ID_AWB_Number', 'CommercialPriority']], how="left", on= 'AWB_ID_AWB_Number')
+awb_frame = pd.merge(awb_frame, awb_commercial[['AWB_ID_AWB_Number', 'CommercialPriority', 'AWB_Info_Revenue']], how="left", on= 'AWB_ID_AWB_Number')
+awb_frame = awb_frame.loc[awb_frame['ULD_Info_Doorgeschoven_Indicator'] != '99. No Breakdown ULD']
 
 
 ###AWB also non breakdown ulds so filtering is last step
@@ -43,16 +54,25 @@ uld_frame = uld_frame.loc[awb_frame['ULD_Info_Doorgeschoven_Indicator'] != '99. 
 uld_frame.head()
 
 ###for datavisualization percentage doorgeschoven
-print(uld_frame['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
-uld_transit = uld_frame.loc[uld_frame['AWB_Info_Cargo_Flow'] == 'TRANSIT']
-print("transit", uld_transit['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
-uld_import = uld_frame.loc[uld_frame['AWB_Info_Cargo_Flow'] != 'TRANSIT']
-print("import", uld_import['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
-print(len(uld_transit), len(uld_import), len(uld_frame))
+#print(uld_frame['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
+#uld_transit = uld_frame.loc[uld_frame['AWB_Info_Cargo_Flow'] == 'TRANSIT']
+#print("transit", uld_transit['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
+#uld_import = uld_frame.loc[uld_frame['AWB_Info_Cargo_Flow'] != 'TRANSIT']
+#print("import", uld_import['ULD_Info_Doorgeschoven_Indicator'].value_counts(normalize=True) * 100)
+#print(len(uld_transit), len(uld_import), len(uld_frame))
 
 
 ###Make excel of first 1000 rows
 excel_frame = awb_frame[0:1000]
 excel_frame.to_excel("dataframe5.xlsx")
+
+
+###Make excel of specific shift
+example_start_date = pd.datetime(2020,5,25, 0,0,0)
+example_end_date = pd.datetime(2020,5,25, 23,59,59)
+example_frame = awb_frame.loc[awb_frame['bd_datetime']>= example_start_date]
+example_frame = example_frame.loc[example_frame['bd_datetime']<= example_end_date]
+example_frame.head()
+example_frame.to_excel("example try8.xlsx")
 
 
