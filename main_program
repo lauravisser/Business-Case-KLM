@@ -1,0 +1,144 @@
+import pandas as pd
+import numpy as np
+from datetime import datetime
+from datetime import timedelta
+
+
+class AWB:
+    
+    def __init__(self, ID, deadline, commercial_priority, revenue, transit, destination, uld_key):
+        self.ID = ID
+        self.deadline = deadline
+        self.commercial_priority = commercial_priority
+        self.revenue = revenue
+        self.transit = transit
+        self.destination = destination
+        self.uld_key = uld_key
+        self.days_of_delay = 0
+    
+       
+    
+class ULD:
+    
+    def __init__(self, ID, arrival_time, est_bd_time, breakdown_uld):
+        self.ID = ID
+        self.arrival_time = arrival_time
+        self.est_bd_time = est_bd_time
+        self.awb_array = np.empty(0, dtype=AWB)
+        self.breakdown_uld = breakdown_uld
+        self.number_of_awbs = 0
+        self.first_deadline = pd.to_datetime('today') + timedelta(days=100) 
+        #initial deadline over 100 days
+       
+        
+    def add_awb(self, awb):
+        self.awb_array = np.append(self.awb_array, awb)
+        self.number_of_awbs += 1
+        
+    def change_deadline(self, new_date):
+        self.first_deadline = new_date
+        
+
+        
+class ULD_array:
+    
+    def __init__(self):
+        self.uld_array = np.empty(0, dtype=ULD)
+        self.number_of_ulds = 0
+        
+    def add_uld(self, uld):
+        self.uld_array = np.append(self.uld_array, uld)
+        self.number_of_ulds +=1
+        
+        
+        
+        
+        
+list_of_ulds = ULD_array()
+encoding_type = "utf16"
+
+
+
+def schedule_ulds():
+    return
+
+
+def sort_ulds_on_deadline():
+    global list_of_ulds
+    list_of_ulds = sorted(list_of_ulds, key=lambda uld: uld.first_deadline) 
+    return
+
+
+def get_uld_deadline():
+    global list_of_ulds
+    [uld.change_deadline(awb.deadline) for uld in list_of_ulds for awb in uld.awb_array if awb.deadline < uld.first_deadline]    
+    return
+
+
+def select_mulds():
+    global list_of_ulds
+    list_of_ulds = [uld for uld in list_of_ulds if uld.breakdown_uld == "Y"]
+    return
+
+
+def connect_awb_to_ulds(awb_dataframe):
+    global list_of_ulds
+    list_of_awbs = [AWB(ID, deadline, commercial_priority, revenue, transit, destination, uld_key) for ID, deadline, commercial_priority, revenue, transit, destination, uld_key in zip(awb_dataframe['AWB_ID_AWB_Number'], awb_dataframe['AWB_Timestamp_Deadline_Breakdown_End'],awb_dataframe['CommercialPriority'], awb_dataframe['AWB_Info_Revenue'], awb_dataframe['AWB_Info_Cargo_Flow'], awb_dataframe['FLIGHT_Location_Destination'], awb_dataframe['ULD_ID_ULD_Key'])]
+    [uld.add_awb(awb) for uld in list_of_ulds for awb in list_of_awbs if uld.ID == awb.uld_key]
+    return
+    
+
+def create_awb_dataframe(awb_file, awb_commercial_file):
+    awb = pd.read_csv(awb_file, encoding = encoding_type)
+    awb['ULD_ID_ULD_Key']=awb['ULD_ID_ULD_Key_IN']
+    awb['AWB_Timestamp_Deadline_Breakdown_End'] = pd.to_datetime(awb['AWB_Timestamp_Deadline_Breakdown_End'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
+    awb_frame = awb[['ULD_ID_ULD_Key', 'AWB_Info_Cargo_Flow', 'AWB_ID_AWB_Number', 'AWB_Timestamp_Deadline_Breakdown_End', 'FLIGHT_Location_Destination']]
+    awb_commercial = pd.read_csv(awb_commercial_file, encoding = encoding_type)
+    awb_frame = pd.merge(awb_frame, awb_commercial[['AWB_ID_AWB_Number', 'CommercialPriority', 'AWB_Info_Revenue']], how="left", on= 'AWB_ID_AWB_Number')
+    return(awb_frame)
+
+
+def create_uld_list(uld_dataframe):
+    list_of_ulds = [ULD(ID, arrival_time, est_bd_time, breakdown_uld) for ID, arrival_time, est_bd_time, breakdown_uld in zip(uld_dataframe['ULD_ID_ULD_Key'], uld_dataframe['cur_arr_datetime'],uld_dataframe['est_bd_minutes'], uld_dataframe['ULD_Info_ULD_Is_Breakdown'])]    
+    return list_of_ulds
+
+
+def create_uld_dataframe(uld_file):    
+    
+    uld = pd.read_csv(uld_file, encoding = encoding_type)
+    uld_frame = pd.DataFrame(uld['ULD_ID_ULD_Key'])
+    
+    uld_key=pd.DataFrame(uld['ULD_ID_ULD_Key'].str.replace('/', ' '))
+    uld_key['cur_arr_datetime']=pd.to_datetime(uld['FLIGHT_Timestamp_Current_Arrival_Date_Time'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
+    uld_key['ULD_Info_ULD_Is_Breakdown'] = uld['ULD_Info_ULD_Is_Breakdown']
+    
+    uld_frame = pd.concat([uld_frame, uld_key[['cur_arr_datetime', 'ULD_Info_ULD_Is_Breakdown']]], axis=1)
+    uld_frame[['est_bd_minutes']] = uld[['ULD_Info_Work_Minutes']]
+    
+    uld_bd = pd.DataFrame(uld['ULD_Timestamp_Breakdown_Actual_End_Date_Time'])
+    uld_bd['bd_datetime']=pd.to_datetime(uld_bd['ULD_Timestamp_Breakdown_Actual_End_Date_Time'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
+    
+    uld_frame[['bd_datetime']]=uld_bd[['bd_datetime']]
+    
+    return uld_frame
+
+
+
+
+def main(uld_file, awb_file, awb_commercial_file):
+    global list_of_ulds
+    uld_frame = create_uld_dataframe(uld_file)
+    list_of_ulds = create_uld_list(uld_frame)
+    list_of_ulds = list_of_ulds[:100]
+    awb_frame = create_awb_dataframe(awb_file, awb_commercial_file)
+    connect_awb_to_ulds(awb_frame)
+    select_mulds()
+    get_uld_deadline()
+    sort_ulds_on_deadline()
+
+
+
+
+
+
+main("./01. ULD.csv", "./03. AWB (incl Flight Destination).csv", "./04. AWB - Commercial indicators (Transit AWBs only!).csv")
