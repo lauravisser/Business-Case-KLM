@@ -53,15 +53,42 @@ class ULD_array:
         
         
         
+####################################################################################################        
         
 list_of_ulds = ULD_array()
 encoding_type = "utf16"
-
+employee_schedule = pd.DataFrame()
 
 
 def schedule_ulds():
     return
 
+
+def calculate_current_teams_working():
+    weekday = pd.to_datetime('today').strftime('%a')
+    hour = int(pd.to_datetime('today').strftime('%H'))
+    if(hour>22):
+        weekday = (pd.to_datetime('today')+ timedelta(days=1)).strftime('%a')
+        shift = "N"
+    elif(hour<6):
+        shift = "N"
+    elif(hour<14):
+        shift = "M"
+    else:
+        shift = "E"
+
+    day = employee_schedule.iloc[employee_schedule.index.get_level_values('DayOfWeek') == weekday]
+    number = day.iloc[day.index.get_level_values('Shift') == shift]
+    number = int(round(number.iloc[0][0],0))
+    return number
+
+
+def create_employee_schedule(employee_file):
+    global employee_schedule
+    data = pd.read_csv("./05. Staff.csv", encoding="utf16") 
+    grouped_mean = data.groupby(["DayOfWeek", "Shift"]).mean()
+    employee_schedule = grouped_mean[['Actual BD teams']]
+    return
 
 def sort_ulds_on_deadline():
     global list_of_ulds
@@ -125,20 +152,26 @@ def create_uld_dataframe(uld_file):
 
 
 
-def main(uld_file, awb_file, awb_commercial_file):
+def main(uld_file, awb_file, awb_commercial_file, employee_file):
     global list_of_ulds
     uld_frame = create_uld_dataframe(uld_file)
     list_of_ulds = create_uld_list(uld_frame)
     list_of_ulds = list_of_ulds[:100]
+    
     awb_frame = create_awb_dataframe(awb_file, awb_commercial_file)
     connect_awb_to_ulds(awb_frame)
+    
     select_mulds()
     get_uld_deadline()
     sort_ulds_on_deadline()
+    
+    create_employee_schedule(employee_file)
+    current_teams_working = calculate_current_teams_working()
 
 
 
-
-
-
-main("./01. ULD.csv", "./03. AWB (incl Flight Destination).csv", "./04. AWB - Commercial indicators (Transit AWBs only!).csv")
+uldfile = "./01. ULD.csv"
+awbfile = "./03. AWB (incl Flight Destination).csv"
+awbcomfile = "./04. AWB - Commercial indicators (Transit AWBs only!).csv"
+employeefile = "./05. Staff.csv"
+main(uldfile, awbfile, awbcomfile, employeefile)
