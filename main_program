@@ -29,6 +29,7 @@ class ULD:
         self.number_of_awbs = 0
         self.first_deadline = pd.to_datetime('today') + timedelta(days=100) 
         #initial deadline over 100 days
+        self.broken_down = False
        
         
     def add_awb(self, awb):
@@ -37,6 +38,9 @@ class ULD:
         
     def change_deadline(self, new_date):
         self.first_deadline = new_date
+        
+    def is_broken_down(self):
+        self.broken_down = True
         
 
         
@@ -50,6 +54,11 @@ class ULD_array:
         self.uld_array = np.append(self.uld_array, uld)
         self.number_of_ulds +=1
         
+
+class Working_Team:
+    
+    def __init__(self):
+        self.finish_time = pd.to_datetime('now')
         
         
         
@@ -60,15 +69,73 @@ encoding_type = "utf16"
 employee_schedule = pd.DataFrame()
 
 
-def schedule_ulds():
+
+def ILP(ulds_this_shift): 
     return
 
 
-def calculate_current_teams_working():
-    weekday = pd.to_datetime('today').strftime('%a')
-    hour = int(pd.to_datetime('today').strftime('%H'))
-    if(hour>22):
-        weekday = (pd.to_datetime('today')+ timedelta(days=1)).strftime('%a')
+def schedule_ulds(ulds_this_shift, current_teams_working):
+    global list_of_ulds
+    schedule_fits = True
+    start_shift = get_timespan_shift(start = True)
+    end_shift = get_timespan_shift(start = False)
+    current_time = pd.to_datetime('now')
+    
+    for uld in ulds_this_shift:
+        current_teams_working = sorted(current_teams_working, key=lambda team: team.finish_time)
+        first_available_team = current_teams_working[0]
+        current_time = first_available_team.finish_time
+        if (not uld.broken_down):
+            working_minutes = ulds_this_shift[0].est_bd_time
+            finish_time = current_time + timedelta(minutes = working_minutes)
+            if (finish_time < uld.first_deadline):
+                first_available_team.finish_time = finish_time
+            else: 
+                schedule_fits = False
+                ILP(ulds_this_shift)        
+    
+    if(schedule_fits):
+        [uld.is_broken_down() for uld in list_of_ulds if uld.first_deadline < end_shift]
+        ulds_done = len(ulds_this_shift)
+        ##ulds die zijn doorgeschoven moeten al nieuwe deadline hebben gekregen
+        while (current_time < end_shift):
+            current_teams_working = sorted(current_teams_working, key=lambda team: team.finish_time)
+            first_available_team = current_teams_working[0]
+            current_time = first_available_team.finish_time
+            next_uld = list_of_ulds[ulds_done]
+            working_minutes = next_uld.est_bd_time
+            finish_time = current_time + timedelta(minutes = working_minutes)
+            if (finish_time < uld.first_deadline and finish_time < end_shift):
+                first_available_team.finish_time = finish_time
+                next_uld.is_broken_down() 
+                ulds_done+=1
+    
+    return
+
+
+def teams_working():
+    shift, date = get_shift()
+    weekday = date.strftime('%a')
+    day = employee_schedule.iloc[employee_schedule.index.get_level_values('DayOfWeek') == weekday]
+    number = day.iloc[day.index.get_level_values('Shift') == shift]
+    number = int(round(number.iloc[0][0],0))
+    current_teams_working = [Working_Team() for working_team in range(number)]  
+    return current_teams_working
+
+
+def create_employee_schedule(employee_file):
+    global employee_schedule
+    data = pd.read_csv(employeefile, encoding="utf16") 
+    grouped_mean = data.groupby(["DayOfWeek", "Shift"]).mean()
+    employee_schedule = grouped_mean[['Actual BD teams']]
+    return
+
+
+def get_shift():
+    date = pd.datetime(2020,5,22, 15,0,0)
+    hour = int(date.strftime('%H'))
+    if(hour>=22):
+        date = (pd.to_datetime('today')+ timedelta(days=1))
         shift = "N"
     elif(hour<6):
         shift = "N"
@@ -76,19 +143,32 @@ def calculate_current_teams_working():
         shift = "M"
     else:
         shift = "E"
+        
+    return shift, date
 
-    day = employee_schedule.iloc[employee_schedule.index.get_level_values('DayOfWeek') == weekday]
-    number = day.iloc[day.index.get_level_values('Shift') == shift]
-    number = int(round(number.iloc[0][0],0))
-    return number
-
-
-def create_employee_schedule(employee_file):
-    global employee_schedule
-    data = pd.read_csv("./05. Staff.csv", encoding="utf16") 
-    grouped_mean = data.groupby(["DayOfWeek", "Shift"]).mean()
-    employee_schedule = grouped_mean[['Actual BD teams']]
-    return
+    
+def get_timespan_shift(start):
+    shift, date = get_shift()
+    if shift == "M":
+        start_shift = date.replace(hour = 6, minute = 0, second = 0)
+        end_shift = date.replace(hour = 14, minute = 0, second = 0)
+    elif shift == "E":
+        start_shift = date.replace(hour = 14, minute = 0, second = 0)
+        end_shift = date.replace(hour = 22, minute = 0, second = 0)
+    else:
+        start_shift = date.replace(hour = 22, minute = 0, second = 0) -timedelta(days = 1)
+        end_shift = date.replace(hour = 6, minute = 0, second = 0)
+        
+    if(not start):
+        return end_shift
+    else:
+        return start_shift
+        
+        
+def get_ulds_this_shift():
+    end_shift = get_timespan_shift(start = False) 
+    ulds_this_shift = [uld for uld in list_of_ulds if uld.first_deadline < end_shift] 
+    return ulds_this_shift
 
 def sort_ulds_on_deadline():
     global list_of_ulds
@@ -116,12 +196,14 @@ def connect_awb_to_ulds(awb_dataframe):
     
 
 def create_awb_dataframe(awb_file, awb_commercial_file):
-    awb = pd.read_csv(awb_file, encoding = encoding_type)
+    awb = pd.read_csv(awb_file)
     awb['ULD_ID_ULD_Key']=awb['ULD_ID_ULD_Key_IN']
     awb['AWB_Timestamp_Deadline_Breakdown_End'] = pd.to_datetime(awb['AWB_Timestamp_Deadline_Breakdown_End'], format='%m/%d/%Y %I:%M:%S %p', errors='ignore')
     awb_frame = awb[['ULD_ID_ULD_Key', 'AWB_Info_Cargo_Flow', 'AWB_ID_AWB_Number', 'AWB_Timestamp_Deadline_Breakdown_End', 'FLIGHT_Location_Destination']]
+    print("awb", len(awb_frame))
     awb_commercial = pd.read_csv(awb_commercial_file, encoding = encoding_type)
     awb_frame = pd.merge(awb_frame, awb_commercial[['AWB_ID_AWB_Number', 'CommercialPriority', 'AWB_Info_Revenue']], how="left", on= 'AWB_ID_AWB_Number')
+    print("com", len(awb_frame))
     return(awb_frame)
 
 
@@ -164,14 +246,18 @@ def main(uld_file, awb_file, awb_commercial_file, employee_file):
     select_mulds()
     get_uld_deadline()
     sort_ulds_on_deadline()
+    ulds_this_shift = get_ulds_this_shift()
     
     create_employee_schedule(employee_file)
-    current_teams_working = calculate_current_teams_working()
+    current_teams_working = teams_working()
+    
+    schedule_ulds(ulds_this_shift, current_teams_working)
 
 
 
 uldfile = "./01. ULD.csv"
-awbfile = "./03. AWB (incl Flight Destination).csv"
+#awbfile = "./03. AWB (incl Flight Destination).csv"
+awbfile = "testset1.csv"
 awbcomfile = "./04. AWB - Commercial indicators (Transit AWBs only!).csv"
 employeefile = "./05. Staff.csv"
 main(uldfile, awbfile, awbcomfile, employeefile)
